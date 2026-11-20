@@ -11,7 +11,8 @@ description: >-
 
 ## 1. Read the brand kit first
 
-`<skill>/brand/brand.json` (+ logo files next to it). Use its colours, fonts, voice, music mood, end card and
+`<skill>/brand/brand.json` (+ logo files next to it). There is currently **no default brand** (`wein-qrit` is a test
+example: apply it only if the user names it). When a brand is named or saved, use its colours, fonts, voice, music mood, end card and
 languages unless the user says otherwise for this video. Fields still `TODO` are unknown: ask about them only if
 this video needs them (one round of questions, max 3), never invent them. If the user gives new brand facts, offer
 to save them into `brand.json` (it lives in the repo `bounabmohamedsalah-collab/mg-styles-15-skill`, folder
