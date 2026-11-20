@@ -1,20 +1,29 @@
 {
-  "_status": "TEMPLATE — fields marked TODO are waiting for the owner's answers; do not invent them",
+  "_status": "Wein Qrit filled from the first promo (2026-11-20). Fields marked TODO are still unknown: ask, don't invent.",
   "brands": {
-    "default": {
-      "name": "TODO",
-      "tagline": "TODO",
-      "languages": { "on_screen": "TODO (ar-darija | ar-msa | fr | en)", "voice": "TODO", "captions": "TODO" },
-      "tone": "TODO (e.g. warm, playful, premium, serious)",
-      "colors": { "primary": "TODO #hex", "secondary": "TODO #hex", "accent": "TODO #hex", "dark": "#151433", "light": "#FFF6E9" },
+    "default": "wein-qrit",
+    "wein-qrit": {
+      "name": { "ar": "وين قريت", "latin": "Wein Qrit", "latin_alt": ["Wine Krite"], "meaning": "Où as-tu étudié ?" },
+      "what": "Social network app to find your school / lycée and reconnect with classmates (Algeria).",
+      "tagline": { "ar": "رجّع صحاب القراية", "fr": "Retrouve tes amis d'école" },
+      "languages": { "on_screen": "ar-darija (Algerian)", "voice": "ar-darija (Algerian)", "captions": "ar-darija", "secondary": "fr" },
+      "tone": "Warm, playful, nostalgic, friendly. Simple darija, short sentences.",
+      "colors": { "primary": "#FF5A4E", "secondary": "#2B2BFF", "accent": "#FFC62B", "mint": "#2EE6A8",
+                  "dark": "#151433", "light": "#FFF6E9" },
       "fonts": { "arabic_display": "Lalezar", "arabic_text": "Cairo", "latin": "Poppins" },
-      "logo": { "file": "TODO brand/logo.svg or logo.png (transparent)", "min_height_px": 120, "safe_corner": "top-right" },
-      "voice": { "provider": "TODO elevenlabs | user-recording", "voice_id": "TODO", "name": "TODO", "model": "TODO" },
-      "music": "TODO (e.g. upbeat pop 110-125 BPM, oud + modern beat, calm piano)",
-      "end_card": "TODO (e.g. logo + tagline + handle / website)",
-      "handles": { "instagram": "TODO", "tiktok": "TODO", "website": "TODO" },
-      "do": [],
-      "dont": []
+      "logo": { "icon": "brand/wein-qrit-icon.svg", "lockup_png": "brand/wein-qrit-lockup.png",
+                "description": "Coral map pin with a cream face (two ink eyes) wearing an ink graduation cap with a sunflower tassel; wordmark وين قريت in Lalezar, ink.",
+                "status": "Drawn for the first promo — TODO: confirm it is the official logo or provide the real one" },
+      "mascot": "The pin character (blinks, hops, looks around).",
+      "voice": { "provider": "elevenlabs", "candidates": {
+                   "wein-qrit-female": "X5SHq2UrmBNK6xkG57U6", "ayyoub-male": "JvNKdNXWUbl2cNBNljB9" },
+                 "voice_id": "TODO (pick after the 2026-11-20 test)", "model": "eleven_v4" },
+      "music": "Upbeat pop ~120 BPM, marimba motif F-A-C, playful pops and whooshes.",
+      "visual_style": "Flat vector (mg-styles-15 / 01-flat-vector rules), bold flat palette above, elastic motion.",
+      "end_card": "Pin logo with cap + وين قريت + رجّع صحاب القراية + WEIN QRIT (TODO: store links / handle)",
+      "handles": { "instagram": "TODO", "tiktok": "TODO", "facebook": "TODO", "website": "TODO", "stores": "TODO" },
+      "do": ["Always show at least one real-feeling school moment (bell, classroom, cap toss)", "Arabic text right-to-left, darija spelling"],
+      "dont": ["No real school names or real people without permission", "No invented features, prices or user numbers"]
     }
   },
   "defaults": {

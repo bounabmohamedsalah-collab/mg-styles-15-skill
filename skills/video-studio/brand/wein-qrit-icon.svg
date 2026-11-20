@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 480" width="400" height="480">
+  <!-- Wein Qrit mascot: coral map pin with a face, wearing a graduation cap (flat, 4 brand colours) -->
+  <path d="M200 470 L278.6 312.3 A111.6 111.6 0 1 0 121.4 312.3 Z" fill="#FF5A4E"/>
+  <circle cx="200" cy="277" r="62.5" fill="#FFF6E9"/>
+  <ellipse cx="177.7" cy="270" rx="11.2" ry="14" fill="#151433"/>
+  <ellipse cx="222.3" cy="270" rx="11.2" ry="14" fill="#151433"/>
+  <g transform="translate(200 120)">
+    <path d="M-54 3 L54 3 L46 46 Q0 61 -46 46 Z" fill="#151433"/>
+    <path d="M0 -34 L85 0 L0 34 L-85 0 Z" fill="#151433"/>
+    <circle r="7.6" fill="#FFC62B"/>
+    <path d="M0 0 L61 3 L74 46" fill="none" stroke="#FFC62B" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+    <rect x="66" y="44" width="17" height="20" rx="5" fill="#FFC62B"/>
+  </g>
+</svg>

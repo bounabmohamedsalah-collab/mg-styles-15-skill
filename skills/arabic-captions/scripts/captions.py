@@ -101,13 +101,19 @@ def ass_color(hexcol, alpha=0):
     return f'&H{alpha:02X}{b}{g}{r}'.upper()
 
 
+def line_end(lines, k, tail=0.15):
+    """End of line k: a short tail after the last word, but never past the next line's start (no stacking)."""
+    e = lines[k][-1]['e'] + tail
+    return min(e, lines[k + 1][0]['s'] - 0.01) if k + 1 < len(lines) else e
+
+
 def write_srt(lines, path):
     with open(path, 'w', encoding='utf-8') as f:
         for k, ln in enumerate(lines, 1):
             text = ' '.join(w['w'] for w in ln)
             if ARABIC.search(text):
                 text = '‫' + text + '‬'          # RLE ... PDF: players keep punctuation on the right side
-            f.write(f"{k}\n{ts_srt(ln[0]['s'])} --> {ts_srt(ln[-1]['e'] + 0.15)}\n{text}\n\n")
+            f.write(f"{k}\n{ts_srt(ln[0]['s'])} --> {ts_srt(line_end(lines, k - 1))}\n{text}\n\n")
 
 
 ASPECT = {'16:9': (1920, 1080), '9:16': (1080, 1920), '1:1': (1080, 1080), '4:5': (1080, 1350)}
@@ -116,7 +122,7 @@ ASPECT = {'16:9': (1920, 1080), '9:16': (1080, 1920), '1:1': (1080, 1080), '4:5'
 def write_ass(lines, path, aspect='16:9', font='Cairo', style='box', highlight='#FFC62B', color='#FFFFFF',
               box='#151433'):
     W, H = ASPECT[aspect]
-    size = round(H * (0.06 if aspect == '16:9' else 0.044 if aspect == '9:16' else 0.055))
+    size = round(H * (0.06 if aspect == '16:9' else 0.056 if aspect == '9:16' else 0.06))
     # vertical position: 9:16 keeps clear of the TikTok/Reels caption + buttons zone (bottom ~22 %)
     margin_v = round(H * (0.08 if aspect == '16:9' else 0.26 if aspect == '9:16' else 0.12))
     if style == 'box':
@@ -142,8 +148,8 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 """
     hl = ass_color(highlight)
     ev = []
-    for ln in lines:
-        end_line = ln[-1]['e'] + 0.15
+    for k, ln in enumerate(lines):
+        end_line = line_end(lines, k)
         for i, w in enumerate(ln):
             s = ln[0]['s'] if i == 0 else w['s']
             e = ln[i + 1]['s'] if i + 1 < len(ln) else end_line
