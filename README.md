@@ -4,7 +4,7 @@ Wrapper skill + installer for [Vincentwei1021/mg-styles-15](https://github.com/V
 whose repository ships prompts, demos and a renderer but no `SKILL.md`.
 
 ```bash
-git clone https://github.com/<you>/mg-styles-15-skill && sh mg-styles-15-skill/install.sh
+git clone https://github.com/bounabmohamedsalah-collab/mg-styles-15-skill && sh mg-styles-15-skill/install.sh
 ```
 
 Installs the library into `~/mg-styles-15` (without the gallery videos), its Node and Python audio packages, the OFL
