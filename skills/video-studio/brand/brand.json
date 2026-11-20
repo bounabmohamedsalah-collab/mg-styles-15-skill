@@ -1,0 +1,27 @@
+{
+  "_status": "TEMPLATE — fields marked TODO are waiting for the owner's answers; do not invent them",
+  "brands": {
+    "default": {
+      "name": "TODO",
+      "tagline": "TODO",
+      "languages": { "on_screen": "TODO (ar-darija | ar-msa | fr | en)", "voice": "TODO", "captions": "TODO" },
+      "tone": "TODO (e.g. warm, playful, premium, serious)",
+      "colors": { "primary": "TODO #hex", "secondary": "TODO #hex", "accent": "TODO #hex", "dark": "#151433", "light": "#FFF6E9" },
+      "fonts": { "arabic_display": "Lalezar", "arabic_text": "Cairo", "latin": "Poppins" },
+      "logo": { "file": "TODO brand/logo.svg or logo.png (transparent)", "min_height_px": 120, "safe_corner": "top-right" },
+      "voice": { "provider": "TODO elevenlabs | user-recording", "voice_id": "TODO", "name": "TODO", "model": "TODO" },
+      "music": "TODO (e.g. upbeat pop 110-125 BPM, oud + modern beat, calm piano)",
+      "end_card": "TODO (e.g. logo + tagline + handle / website)",
+      "handles": { "instagram": "TODO", "tiktok": "TODO", "website": "TODO" },
+      "do": [],
+      "dont": []
+    }
+  },
+  "defaults": {
+    "aspect": "16:9", "size": "1920x1080", "fps": 30, "duration_s": 15,
+    "social_versions": ["9:16", "1:1"],
+    "captions": "on for social versions, off for 16:9 unless asked",
+    "loudness_lufs": -14,
+    "output_dir": "/home/user/videos/<slug>/"
+  }
+}

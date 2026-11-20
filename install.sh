@@ -62,4 +62,13 @@ if [ ! -f demos/08-morph/assets/fonts/Outfit-SemiBold.ttf ]; then
   rm -rf "$GF"
 fi
 sh "$HERE/arabic-fonts.sh" || true   # OFL Arabic fonts for all skills
+
+# Own skills in skills/* (video-studio router + brand kit, arabic-captions, video-formats)
+for d in "$HERE"/skills/*/; do n=$(basename "$d"); rm -rf "$H/.claude/skills/$n"; cp -r "$d" "$H/.claude/skills/$n"; done
+
+# Local transcription for arabic-captions: faster-whisper + large-v3-turbo model (~1.6 GB, from huggingface.co)
+VT=$H/video-tools
+[ -x "$VT/.venv/bin/python" ] || python3 -m venv "$VT/.venv"
+"$VT/.venv/bin/pip" install -q --disable-pip-version-check faster-whisper 'av<19' || true
+"$VT/.venv/bin/python" -c "from faster_whisper import WhisperModel; WhisperModel('large-v3-turbo', device='cpu', compute_type='int8', download_root='$VT/models')" >/dev/null 2>&1 || echo "! whisper model not downloaded (huggingface.co blocked?)"
 echo "mg-styles-15 ready: $LIB"
