@@ -1,0 +1,397 @@
+<!doctype html>
+<html lang="ar"><head><meta charset="utf-8">
+<title>وين قريت — Wine Krite</title>
+<style>
+@font-face { font-family: 'Poppins'; src: url('/assets/fonts/latin/poppins/Poppins-SemiBold.ttf'); font-weight: 600; }
+@font-face { font-family: 'Poppins'; src: url('/assets/fonts/latin/poppins/Poppins-Black.ttf'); font-weight: 900; }
+html, body { margin: 0; background: #151433; overflow: hidden; }
+canvas { display: block; }
+</style></head>
+<body><canvas id="c" width="1920" height="1080"></canvas>
+<script type="module">
+window.DEMO = { width: 1920, height: 1080, fps: 30, duration: 10 };
+const cues = await (await fetch('cues.json')).json();
+const C = cues.t;
+const cv = document.getElementById('c'), x = cv.getContext('2d');
+const W = 1920, H = 1080;
+
+// palette (strictly flat)
+const P = { blue: '#2B2BFF', coral: '#FF5A4E', sun: '#FFC62B', mint: '#2EE6A8', cream: '#FFF6E9', ink: '#151433',
+            mintD: '#1FB889', white: '#FFFFFF', sunD: '#F2A900' };
+const SKIN = ['#F2C29B', '#C68A5E', '#8D5A3B', '#E9B48A', '#B8784F', '#F5D0B0'];
+const AV = [P.mint, P.blue, P.coral, P.blue, P.coral, P.mint];
+
+// ---------- easing ----------
+const cl = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
+const U = (t, a, b) => cl((t - a) / (b - a));
+const lerp = (a, b, k) => a + (b - a) * k;
+const eOut = k => 1 - Math.pow(1 - k, 3);
+const eIn = k => k * k * k;
+const eIO = k => k < .5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2;
+const back = (k, s = 1.9) => k <= 0 ? 0 : k >= 1 ? 1 : 1 + (s + 1) * Math.pow(k - 1, 3) + s * Math.pow(k - 1, 2);
+// closed-form spring 0 -> 1 with overshoot (dur seconds)
+const spring = (t, t0, dur = .55, f = 1.9, d = 5.2) => { const k = (t - t0) / dur; if (k <= 0) return 0; if (k >= 1.6) return 1; return 1 - Math.exp(-d * k) * Math.cos(2 * Math.PI * f * k); };
+// landing squash (returns signed amount: +x wide / -y short)
+const squash = (t, t0, amp = .2, f = 3.2, d = 8) => t < t0 ? 0 : amp * Math.exp(-d * (t - t0)) * Math.cos(2 * Math.PI * f * (t - t0));
+const rnd = (s => () => (s = (s * 16807) % 2147483647) / 2147483647)(1234567);
+
+// ---------- primitives ----------
+function rr(px, py, w, h, r) { x.beginPath(); x.roundRect(px, py, w, h, r); }
+function circ(cx, cy, r) { x.beginPath(); x.arc(cx, cy, Math.max(0, r), 0, Math.PI * 2); }
+function fill(c) { x.fillStyle = c; x.fill(); }
+function withT(tx, ty, sx, sy, rot, fn) { x.save(); x.translate(tx, ty); if (rot) x.rotate(rot); x.scale(sx, sy); fn(); x.restore(); }
+
+// map pin, tip at (0,0), height h; eyes look toward (lx,ly) in [-1,1]
+function pin(h, col, look = [0, 0], blink = 0) {
+  const d = .62 * h, R = .36 * h, a = Math.acos(R / d);
+  x.beginPath(); x.moveTo(0, 0);
+  x.lineTo(Math.cos(Math.PI / 2 - a) * R, -d + Math.sin(Math.PI / 2 - a) * R);
+  x.arc(0, -d, R, Math.PI / 2 - a, Math.PI / 2 + a, true); x.closePath(); fill(col);
+  circ(0, -d, R * .56); fill(P.cream);
+  const ex = look[0] * R * .14, ey = look[1] * R * .12, er = R * .1;
+  for (const s of [-1, 1]) {
+    withT(s * R * .2 + ex, -d + ey, 1, 1 - .92 * blink, 0, () => { x.beginPath(); x.ellipse(0, 0, er, er * 1.25, 0, 0, Math.PI * 2); fill(P.ink); });
+  }
+}
+// mortarboard, centre of board at (0,0), width s
+function cap(s, tassel = 0) {
+  x.beginPath(); x.moveTo(-s * .32, s * .02); x.lineTo(s * .32, s * .02); x.lineTo(s * .27, s * .27); x.quadraticCurveTo(0, s * .36, -s * .27, s * .27); x.closePath(); fill(P.ink);
+  x.beginPath(); x.moveTo(0, -s * .2); x.lineTo(s * .5, 0); x.lineTo(0, s * .2); x.lineTo(-s * .5, 0); x.closePath(); fill(P.ink);
+  circ(0, 0, s * .045); fill(P.sun);
+  const ang = .25 + tassel;
+  x.strokeStyle = P.sun; x.lineWidth = s * .035; x.lineCap = 'round';
+  x.beginPath(); x.moveTo(0, 0); x.lineTo(s * .36, s * .02); x.lineTo(s * .36 + Math.sin(ang) * s * .26, s * .02 + Math.cos(ang) * s * .26); x.stroke();
+  withT(s * .36 + Math.sin(ang) * s * .3, s * .02 + Math.cos(ang) * s * .3, 1, 1, -ang, () => { rr(-s * .05, -s * .04, s * .1, s * .12, s * .03); fill(P.sun); });
+}
+// avatar disc
+function avatar(r, i) {
+  circ(0, 0, r); fill(AV[i % 6]);
+  x.save(); circ(0, 0, r); x.clip();
+  x.beginPath(); x.ellipse(0, r * .95, r * .62, r * .5, 0, 0, Math.PI * 2); fill(i % 2 ? P.ink : P.cream);
+  circ(0, -r * .08, r * .36); fill(SKIN[i % 6]);
+  // hair styles
+  x.fillStyle = P.ink; x.beginPath();
+  if (i % 3 === 0) { x.arc(0, -r * .14, r * .38, Math.PI * 1.02, Math.PI * 1.98); x.closePath(); }
+  else if (i % 3 === 1) { x.arc(0, -r * .1, r * .42, Math.PI * .85, Math.PI * 2.15); x.lineTo(r * .3, r * .3); x.lineTo(r * .38, -r * .1); x.arc(0, -r * .08, r * .3, 0, Math.PI, true); x.lineTo(-r * .3, r * .3); x.closePath(); }
+  else { x.ellipse(0, -r * .38, r * .3, r * .14, 0, 0, Math.PI * 2); }
+  x.fill();
+  circ(-r * .12, -r * .06, r * .04); fill(P.ink); circ(r * .12, -r * .06, r * .04); fill(P.ink);
+  x.restore();
+}
+function arText(s, px, py, size, col, font = 'Cairo', weight = 900, align = 'center') {
+  x.font = `${weight} ${size}px "${font}"`; x.direction = 'rtl'; x.textAlign = align; x.textBaseline = 'alphabetic';
+  x.fillStyle = col; x.fillText(s, px, py); x.direction = 'ltr';
+}
+
+// ---------- scene 1: the pin & the school (bg ultramarine) ----------
+const GROUND = 830, PINH = 230;
+function pinState(t) {
+  // fall 0 -> 0.6 (ease-in), stretch while falling, squash on landing, crouch before the wipe
+  const k = U(t, 0, C.pinLand), y = lerp(-PINH - 40, 0, eIn(k)) + (t < C.pinLand ? 0 : 0);
+  let sx = 1, sy = 1;
+  if (t < C.pinLand) { const v = k * k; sy = 1 + .16 * v; sx = 1 - .1 * v; }
+  else { const s = squash(t, C.pinLand, .24); sx = 1 + s; sy = 1 - s; }
+  const cr = U(t, C.crouch, C.wipe1) ; const crouch = Math.sin(Math.PI * cr) * .14 * (cr < .7 ? 1 : 0) ;
+  sx += crouch * .6; sy -= crouch;
+  const hop = t > C.bubble ? -Math.max(0, Math.sin(Math.PI * U(t, C.bubble - .05, C.bubble + .3))) * 26 : 0;
+  return { y: GROUND + (t < C.pinLand ? (y - 0) : 0) + hop, sx, sy };
+}
+function scene1(t) {
+  x.fillStyle = P.blue; x.fillRect(0, 0, W, H);
+  // camera push
+  const cs = 1 + .07 * eIO(U(t, 1.0, 3.0));
+  x.save(); x.translate(960, 640); x.scale(cs, cs); x.translate(-960, -640);
+  // clouds
+  [[380, 230, 1, .25], [1580, 190, .8, .4], [1150, 120, .55, .5]].forEach(([cx, cy, s, t0], i) => {
+    const p = spring(t, t0, .5), dx = (t - t0) * (i % 2 ? -14 : 18);
+    if (p <= 0) return;
+    withT(cx + dx, cy, s * p, s * p, 0, () => { x.fillStyle = P.cream; rr(-120, -10, 240, 60, 30); x.fill(); circ(-30, -10, 50); x.fill(); circ(40, 0, 38); x.fill(); });
+  });
+  // ground
+  x.fillStyle = P.mint; x.fillRect(-200, GROUND, W + 400, 400);
+  // trees
+  [[470, C.tree1, 1], [1450, C.tree2, .85]].forEach(([tx, t0, s]) => {
+    const p = spring(t, t0, .55); if (p <= 0) return;
+    const sway = Math.sin((t - t0) * 3) * .03;
+    withT(tx, GROUND, s * p, s * p, sway, () => { rr(-12, -150, 24, 150, 8); fill(P.ink); circ(0, -190, 85); fill(P.mintD); circ(-40, -150, 50); fill(P.mintD); circ(45, -160, 55); fill(P.mintD); });
+  });
+  // school body
+  const pb = spring(t, C.school, .55);
+  if (pb > 0) withT(960, GROUND, 1, pb, 0, () => { x.fillStyle = P.sun; x.fillRect(-330, -270, 660, 270); x.fillStyle = P.sunD; x.fillRect(-330, -270, 660, 22); });
+  // windows (stagger 2 frames)
+  const WX = [-250, -150, 150, 250], WY = [-230, -125];
+  let wi = 0;
+  for (const wy of WY) for (const wx of WX) {
+    const p = spring(t, C.win + wi * 2 / 30, .4); wi++;
+    if (p <= 0) continue;
+    withT(960 + wx, GROUND + wy + 35, p, p, 0, () => { rr(-36, -36, 72, 72, 8); fill(P.cream); x.fillStyle = P.blue; x.fillRect(-4, -36, 8, 72); x.fillRect(-36, -4, 72, 8); });
+  }
+  // door
+  const pd = spring(t, C.door, .45);
+  if (pd > 0) withT(960, GROUND, pd, pd, 0, () => { rr(-62, -160, 124, 160, [62, 62, 0, 0]); fill(P.coral); });
+  // pediment
+  const pr = spring(t, C.roof, .5);
+  if (pr > 0) withT(960, GROUND - 270, pr, pr, 0, () => {
+    x.beginPath(); x.moveTo(-390, 0); x.lineTo(0, -170); x.lineTo(390, 0); x.closePath(); fill(P.ink);
+  });
+  // flag
+  const pf = spring(t, C.flag, .5);
+  if (pf > 0) withT(960, GROUND - 440, 1, pf, 0, () => {
+    x.fillStyle = P.ink; x.fillRect(-5, -120, 10, 120);
+    x.beginPath(); x.moveTo(5, -120);
+    for (let i = 0; i <= 12; i++) { const fx = 5 + i * 9; x.lineTo(fx, -120 + Math.sin(t * 9 - i * .6) * 5 * (i / 12)); }
+    for (let i = 12; i >= 0; i--) { const fx = 5 + i * 9; x.lineTo(fx, -70 + Math.sin(t * 9 - i * .6) * 5 * (i / 12)); }
+    x.closePath(); fill(P.coral);
+  });
+  // clock
+  const pc = spring(t, C.clock, .45);
+  if (pc > 0) withT(960, GROUND - 335, pc, pc, 0, () => {
+    circ(0, 0, 44); fill(P.cream);
+    x.strokeStyle = P.ink; x.lineWidth = 7; x.lineCap = 'round';
+    const a1 = t * 2.2, a2 = t * .4;
+    x.beginPath(); x.moveTo(0, 0); x.lineTo(Math.sin(a1) * 30, -Math.cos(a1) * 30); x.stroke();
+    x.beginPath(); x.moveTo(0, 0); x.lineTo(Math.sin(a2) * 20, -Math.cos(a2) * 20); x.stroke();
+  });
+  // pin shadow + pin
+  const ps = pinState(t);
+  const sh = cl(1 - (GROUND - ps.y) / 700);
+  x.beginPath(); x.ellipse(960, GROUND + 6, 70 * sh * ps.sx, 14 * sh, 0, 0, Math.PI * 2); fill('#22C08C');
+  const look = t < C.bubble ? [Math.sin(t * 2) * .4, -.3] : [lerp(0, .9, eOut(U(t, C.bubble, C.bubble + .25))), -.6];
+  const bl = Math.max(0, 1 - Math.abs(t - C.blink1) / .05);
+  withT(960, ps.y, ps.sx, ps.sy, 0, () => pin(PINH, P.coral, look, bl));
+  // question bubble
+  const pq = spring(t, C.bubble, .5);
+  if (pq > 0) {
+    const wob = Math.sin((t - C.bubble) * 5) * .015;
+    x.font = '900 92px "Cairo"'; x.direction = 'rtl'; const bw = x.measureText('وين قريت؟').width + 110; x.direction = 'ltr';
+    withT(1120, 500, pq, pq, wob, () => {
+      x.beginPath(); x.moveTo(30, -10); x.lineTo(-46, 56); x.lineTo(120, -10); x.closePath(); fill(P.cream);
+      rr(0, -196, bw, 186, 50); fill(P.cream);
+      arText('وين قريت؟', bw / 2, -72, 92, P.ink, 'Cairo', 900);
+    });
+  }
+  x.restore();
+  return { cx: 960 + (0) , cy: (ps.y - PINH * .62 - 640) * cs + 640 };
+}
+
+// ---------- scene 2: the phone (bg coral) ----------
+const PH = { w: 500, h: 920 };
+const ROWS = 4;
+function phoneGeom(t) {
+  const k = U(t, C.phone, C.phone + .5), b = back(k, 1.6);
+  return { cx: 960, cy: lerp(1700, 540, b), rot: lerp(-.12, 0, b) };
+}
+function rowPos(i, t) { // centre of row i avatar in screen space (camera applied by caller)
+  const g = phoneGeom(t); return { x: g.cx + PH.w / 2 - 22 - 70, y: g.cy - PH.h / 2 + 22 + 300 + i * 138 + 60 };
+}
+function scene2(t, drawAvatars = true) {
+  x.fillStyle = P.coral; x.fillRect(0, 0, W, H);
+  // floating background dots (secondary action)
+  for (let i = 0; i < 14; i++) {
+    const a = i * 2.39996, r = 520 + (i % 4) * 90, p = spring(t, C.phone + .1 + i * .03, .5);
+    const px = 960 + Math.cos(a + t * .15) * r * 1.3, py = 540 + Math.sin(a + t * .15) * r * .75;
+    circ(px, py, (10 + (i % 3) * 7) * p); fill(i % 3 === 0 ? P.sun : i % 3 === 1 ? P.cream : P.ink);
+  }
+  const cs = 1 + .05 * eIO(U(t, 3.4, 6.0));
+  x.save(); x.translate(960, 540); x.scale(cs, cs); x.translate(-960, -540);
+  const g = phoneGeom(t);
+  withT(g.cx, g.cy, 1, 1, g.rot, () => {
+    const L = -PH.w / 2, T0 = -PH.h / 2;
+    rr(L, T0, PH.w, PH.h, 64); fill(P.ink);
+    const sx = L + 22, sy = T0 + 22, sw = PH.w - 44, sh = PH.h - 44;
+    x.save(); rr(sx, sy, sw, sh, 44); x.clip();
+    x.fillStyle = P.cream; x.fillRect(sx, sy, sw, sh);
+    // header
+    x.fillStyle = P.blue; x.fillRect(sx, sy, sw, 130);
+    arText('وين قريت', sx + sw / 2 - 20, sy + 92, 58, P.cream, 'Lalezar', 400);
+    withT(sx + sw / 2 + 112, sy + 100, 1, 1, 0, () => pin(60, P.coral));
+    // search field
+    const pf = spring(t, C.field, .45);
+    if (pf > 0) withT(sx + sw / 2, sy + 205, pf, pf, 0, () => {
+      rr(-sw / 2 + 24, -40, sw - 48, 80, 40); fill(P.white); x.strokeStyle = P.ink; x.lineWidth = 5; x.stroke();
+      x.strokeStyle = P.ink; x.lineWidth = 6; circ(-sw / 2 + 74, -4, 14); x.stroke();
+      x.beginPath(); x.moveTo(-sw / 2 + 84, 7); x.lineTo(-sw / 2 + 96, 20); x.stroke();
+      const q = 'ثانوية الأمل';
+      const n = Math.floor(cl((t - C.type) / C.typeStep, 0, q.length));
+      if (n > 0) arText(q.slice(0, n), sw / 2 - 52, 14, 38, P.ink, 'Cairo', 800, 'right');
+      if (t > C.field + .2 && t < C.row + .3 && Math.floor(t * 4) % 2 === 0) {
+        x.font = '800 38px "Cairo"'; x.direction = 'rtl'; const tw = n > 0 ? x.measureText(q.slice(0, n)).width : 0; x.direction = 'ltr';
+        x.fillStyle = P.coral; x.fillRect(sw / 2 - 58 - tw, -22, 5, 44);
+      }
+    });
+    // results
+    for (let i = 0; i < ROWS; i++) {
+      const t0 = C.row + i * C.rowStep, p = spring(t, t0, .5); if (p <= 0) continue;
+      const ry = sy + 300 + i * 138;
+      withT(sx + sw / 2, ry + 60 + (1 - p) * 60, 1, p, 0, () => {
+        rr(-sw / 2 + 20, -56, sw - 40, 112, 28); fill(P.white);
+        if (drawAvatars) withT(sw / 2 - 92, 0, 1, 1, 0, () => avatar(40, i));
+        rr(sw / 2 - 152 - 170, -26, 170, 18, 9); fill(P.ink);
+        rr(sw / 2 - 152 - 110, 8, 110, 14, 7); fill(AV[i]);
+        // add button -> check
+        const tc = C.check + i * C.checkStep, done = t >= tc, s = squash(t, tc, .3);
+        withT(-sw / 2 + 80, 0, 1 + s, 1 - s, 0, () => {
+          circ(0, 0, 30); fill(done ? P.mint : P.blue);
+          x.strokeStyle = done ? P.ink : P.cream; x.lineWidth = 7; x.lineCap = 'round'; x.lineJoin = 'round'; x.beginPath();
+          if (done) { const k = eOut(U(t, tc, tc + .15)); x.moveTo(-12, 1); x.lineTo(-3, 10); if (k > .4) x.lineTo(-3 + 17 * (k - .4) / .6, 10 - 22 * (k - .4) / .6); }
+          else { x.moveTo(-12, 0); x.lineTo(12, 0); x.moveTo(0, -12); x.lineTo(0, 12); }
+          x.stroke();
+        });
+      });
+    }
+    x.restore();
+    rr(-60, T0 + 34, 120, 22, 11); fill(P.ink);
+  });
+  x.restore();
+  return cs;
+}
+
+// ---------- scene 3: the network & the cap toss (bg sunflower) ----------
+const RING = { cx: 960, cy: 600, r: 330 };
+function ringPos(i) { const a = -Math.PI / 2 + i * Math.PI / 3; return { x: RING.cx + Math.cos(a) * RING.r * 1.35, y: RING.cy + Math.sin(a) * RING.r }; }
+function avState(i, t) {
+  // start: phone row (scene-2 camera at t=drop) or off-screen for the 2 extras
+  const cs = 1 + .05;
+  let s0;
+  if (i < 4) { const rp = rowPos(i, C.drop); s0 = { x: (rp.x - 960) * cs + 960, y: (rp.y - 540) * cs + 540, r: 40 * cs }; }
+  else s0 = { x: i === 4 ? 2150 : -230, y: i === 4 ? 980 : 980, r: 75 };
+  const t0 = i < 4 ? C.drop + i * .04 : C.extra + (i - 4) * .06;
+  const k = back(U(t, t0, t0 + .45), 1.3);
+  const e = ringPos(i);
+  // arc: lift the midpoint
+  const mx = lerp(s0.x, e.x, k), my = lerp(s0.y, e.y, k) - Math.sin(Math.PI * cl(k)) * 120;
+  let r = lerp(s0.r, 75, cl(k));
+  // anticipation before the toss, then launch squash
+  const an = Math.sin(Math.PI * U(t, C.capAntic, C.caps)) * .12, sq = squash(t, C.caps, .18);
+  // collapse into the logo
+  const kc = eIn(U(t, C.collapse + i * .03, C.collapse + i * .03 + .32));
+  return { x: lerp(mx, 960, kc), y: lerp(my, 420, kc), r: r * (1 - kc), sx: 1 + an * .6 - sq, sy: 1 - an + sq, vis: t >= t0 - .001 || i < 4 };
+}
+const EDGES = [[0, 1], [1, 2], [2, 3], [3, 4], [4, 5], [5, 0], [0, 3], [1, 4], [2, 5]];
+function scene3(t) {
+  x.fillStyle = P.sun; x.fillRect(0, 0, W, H);
+  // network lines
+  const fade = 1 - U(t, C.collapse, C.collapse + .3);
+  x.strokeStyle = P.ink; x.lineCap = 'round';
+  EDGES.forEach(([a, b], j) => {
+    const k = eOut(U(t, C.lines + j * .045, C.lines + j * .045 + .25)); if (k <= 0 || fade <= 0) return;
+    const A = avState(a, t), B = avState(b, t);
+    x.lineWidth = (j < 6 ? 10 : 6) * fade;
+    x.beginPath(); x.moveTo(A.x, A.y); x.lineTo(lerp(A.x, B.x, k), lerp(A.y, B.y, k)); x.stroke();
+    // travelling dot
+    if (k >= 1) { const q = ((t - C.lines) * 1.2 + j * .37) % 1; circ(lerp(A.x, B.x, q), lerp(A.y, B.y, q), 9 * fade); fill(P.coral); }
+  });
+  // confetti
+  if (t > C.caps) confetti(t);
+}
+function drawAvatars3(t) {
+  for (let i = 0; i < 6; i++) { const s = avState(i, t); if (!s.vis || s.r < .5) continue; withT(s.x, s.y, s.sx, s.sy, 0, () => avatar(s.r, i)); }
+}
+const CONF = Array.from({ length: 46 }, (_, i) => ({ a: rnd() * Math.PI * 2, v: 700 + rnd() * 900, s: 24 + rnd() * 26, k: i % 4, c: [P.coral, P.blue, P.mint, P.cream, P.ink][i % 5], w: (rnd() - .5) * 14 }));
+function confetti(t) {
+  const tau = t - C.caps;
+  for (const p of CONF) {
+    const dr = (1 - Math.exp(-2.2 * tau)) / 2.2; // drag-integrated distance
+    const px = 960 + Math.cos(p.a) * p.v * dr, py = 600 + Math.sin(p.a) * p.v * dr * .8 + 260 * tau * tau;
+    const sc = cl(1 - U(t, C.wipe3 - .2, C.wipe3 + .1));
+    if (sc <= 0) continue;
+    withT(px, py, sc, sc, p.w * tau, () => {
+      x.beginPath();
+      if (p.k === 0) x.rect(-p.s / 2, -p.s / 4, p.s, p.s / 2);
+      else if (p.k === 1) x.arc(0, 0, p.s / 2.4, 0, Math.PI * 2);
+      else if (p.k === 2) { x.moveTo(0, -p.s / 2); x.lineTo(p.s / 2, p.s / 2); x.lineTo(-p.s / 2, p.s / 2); x.closePath(); }
+      else x.roundRect(-p.s / 2, -p.s / 6, p.s, p.s / 3, p.s / 6);
+      fill(p.c);
+    });
+  }
+}
+// caps: ballistic toss from each avatar, then converge onto the logo pin
+const CAP_T = { x: 960, y: 262, s: 170 };
+function capState(i, t) {
+  const st = avState(i, C.caps);
+  const tau = t - C.caps;
+  const vx = (st.x - 960) * .55, vy = 1500 + (i % 3) * 120, g = 3300;
+  const bx = st.x + vx * tau, by = st.y - st.r - vy * tau + .5 * g * tau * tau, rot = (i % 2 ? 1 : -1) * tau * (7 + i);
+  const k = eIO(U(t, C.converge, C.capLand));
+  return { x: lerp(bx, CAP_T.x, k), y: lerp(by, CAP_T.y, k), s: lerp(120, CAP_T.s, k), rot: lerp(rot, 0, k) };
+}
+function drawCaps(t) {
+  if (t < C.caps || t >= C.capLand) return;
+  for (let i = 5; i >= 0; i--) { const c = capState(i, t); withT(c.x, c.y, 1, 1, c.rot, () => cap(c.s, Math.sin(t * 9 + i) * .4)); }
+}
+
+// ---------- scene 4: the lockup (bg cream) ----------
+function scene4(t) {
+  x.fillStyle = P.cream; x.fillRect(0, 0, W, H);
+  // soft ring of dots (living micro-motion)
+  for (let i = 0; i < 18; i++) {
+    const a = i / 18 * Math.PI * 2 + t * .25, p = spring(t, C.word + i * .02, .5);
+    circ(960 + Math.cos(a) * 760, 540 + Math.sin(a) * 430, 9 * p); fill([P.coral, P.blue, P.mint, P.sun][i % 4]);
+  }
+  const bob = Math.sin((t - C.capLand) * 2.6) * 5 * U(t, C.capLand + .5, C.capLand + 1);
+  const pp = spring(t, C.logoPin, .55), sq = squash(t, C.capLand, .16);
+  const tipY = 640 + bob;
+  const bl = Math.max(0, 1 - Math.abs(t - C.blink2) / .05);
+  withT(960, tipY, pp * (1 + sq), pp * (1 - sq), 0, () => pin(310, P.coral, [Math.sin(t * 1.3) * .3, -.2], bl));
+  if (t >= C.capLand) {
+    const top = tipY - 310 * (.62 + .36) * (1 - sq) ;
+    withT(960, top + 8, 1 + sq * .6, 1 - sq * .6, 0, () => cap(CAP_T.s, Math.sin((t - C.capLand) * 5) * .35 * Math.exp(-(t - C.capLand) * .6) + Math.sin(t * 2) * .08));
+  }
+  // wordmark, revealed right-to-left with a scale overshoot
+  const kw = U(t, C.word, C.word + .42);
+  if (kw > 0) {
+    x.font = '400 168px "Lalezar"'; x.direction = 'rtl'; const ww = x.measureText('وين قريت').width; x.direction = 'ltr';
+    const sc = back(U(t, C.word, C.word + .5), 2.2) * .15 + .85;
+    x.save(); x.beginPath(); x.rect(960 + ww / 2 + 30 - eOut(kw) * (ww + 60), 640, ww + 60, 230); x.clip();
+    withT(960, 830, sc, sc, 0, () => arText('وين قريت', 0, 0, 168, P.ink, 'Lalezar', 400));
+    x.restore();
+  }
+  // slogan: mask slide-up
+  const ks = back(U(t, C.slogan, C.slogan + .4), 1.4);
+  if (ks > 0) {
+    x.save(); x.beginPath(); x.rect(300, 862, 1320, 90); x.clip();
+    arText('رجّع صحاب القراية', 960, 930 + (1 - ks) * 90, 62, P.coral, 'Cairo', 800);
+    x.restore();
+  }
+  // latin
+  const L = 'WINE  KRITE'; x.font = '600 30px "Poppins"'; x.textAlign = 'left';
+  const sp = 10, tot = [...L].reduce((a, ch) => a + x.measureText(ch).width + sp, -sp);
+  let lx = 960 - tot / 2;
+  [...L].forEach((ch, i) => {
+    const p = spring(t, C.latin + i * 1 / 30, .4), w = x.measureText(ch).width;
+    if (p > 0) withT(lx + w / 2, 1000, p, p, 0, () => { x.fillStyle = P.ink; x.font = '600 30px "Poppins"'; x.textAlign = 'center'; x.fillText(ch, 0, 0); });
+    lx += w + sp;
+  });
+}
+
+// ---------- compositor ----------
+function clipCircle(cx, cy, r, fn) { x.save(); circ(cx, cy, r); x.clip(); fn(); x.restore(); }
+window.renderAt = (t) => {
+  x.setTransform(1, 0, 0, 1, 0, 0);
+  let p1 = null;
+  if (t < C.wipe1 + .45) p1 = scene1(Math.min(t, C.wipe1 + .45));
+  if (t >= C.wipe1 && t < C.drop + .4) {
+    const k = eIO(U(t, C.wipe1, C.wipe1 + .42));
+    const r = k * 2300;
+    const draw = () => scene2(t, t < C.drop);
+    if (t < C.wipe1 + .42) clipCircle(960, p1 ? p1.cy : 500, r, draw); else draw();
+  }
+  if (t >= C.drop && t < C.wipe3 + .35) {
+    const k = eIO(U(t, C.drop - .02, C.drop + .35));
+    if (t < C.drop + .35) clipCircle(960, 560, k * 1250, () => scene3(t)); else scene3(t);
+  }
+  if (t >= C.wipe3) {
+    const k = eIO(U(t, C.wipe3, C.wipe3 + .32));
+    if (t < C.wipe3 + .32) clipCircle(960, 420, k * 1250, () => scene4(t)); else scene4(t);
+  }
+  if (t >= C.drop && t < C.wipe3 + .4) drawAvatars3(t);
+  drawCaps(t);
+};
+await document.fonts.load('400 168px "Lalezar"', 'وين');
+await document.fonts.load('900 96px "Cairo"', 'وين');
+await document.fonts.load('800 62px "Cairo"', 'رجّع');
+await document.fonts.load('600 30px "Poppins"', 'W');
+await document.fonts.ready;
+window.renderAt(0);
+window.__ready = true;
+</script></body></html>
