@@ -61,4 +61,5 @@ if [ ! -f demos/08-morph/assets/fonts/Outfit-SemiBold.ttf ]; then
   fi
   rm -rf "$GF"
 fi
+sh "$HERE/arabic-fonts.sh" || true   # OFL Arabic fonts for all skills
 echo "mg-styles-15 ready: $LIB"

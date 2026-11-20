@@ -54,5 +54,9 @@ Wrapper skill (written locally; the upstream repo ships no SKILL.md) around the 
   loads a missing font fails before `__ready` (NetworkError), so demos 01, 02, 03, 06, 07, 08, 09, 10, 12, 18, 19, 20, 22
   don't render as-is. In new films, use only installed fonts (`ls -R $LIB/assets/fonts`), e.g. Noto Sans SC /
   Noto Serif SC / ZCOOL KuaiLe / LXGW Marker Gothic / Long Cang for Chinese.
+- Arabic: 14 OFL families are installed system-wide in `~/.local/share/fonts/arabic` (use by family name, no
+  @font-face needed): Cairo, Tajawal, Almarai, IBM Plex Sans Arabic, Readex Pro, Noto Sans Arabic (modern/UI);
+  Amiri, Noto Naskh Arabic, Scheherazade New (classic); Reem Kufi, Lalezar, Noto Kufi Arabic, Changa, Lemonada
+  (display). Set `dir="rtl"` on Arabic text.
 - The 3D style (04) needs Blender, which is not installed.
 - ffmpeg 7 is on PATH.

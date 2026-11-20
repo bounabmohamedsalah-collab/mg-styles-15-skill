@@ -10,3 +10,6 @@ git clone https://github.com/bounabmohamedsalah-collab/mg-styles-15-skill && sh 
 Installs the library into `~/mg-styles-15` (without the gallery videos), its Node and Python audio packages, the OFL
 fonts it uses (from google/fonts), and the skill into `~/.claude/skills/mg-styles-15/`. Proprietary CJK fonts used by
 some demos are not installed; see `skill/SKILL.md`.
+
+`arabic-fonts.sh` (run by `install.sh`) also installs 14 OFL Arabic font families from google/fonts into
+`~/.local/share/fonts/arabic`, usable by any page rendered in Chromium.
